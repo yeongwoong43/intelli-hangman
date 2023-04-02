@@ -23,7 +23,8 @@ class Master:
         df['hash'] = [1 for i in range(n)] + [0 for i in range(64-n)]
         if not test:
             for i in range(n):
-                df.loc[i, word[i]] = 1
+                df.loc[:n-1, 'a':'z'] = -1
+                df.loc[i, word[i]] = 1 # 이거 왜 작동 안함?
         
         return df
     
@@ -36,6 +37,7 @@ class Master:
     def stepNext(self, ans): # 답안하고 이전 state를 받아서 다음 state 리턴
         if self.time == -1: raise Exception("Why don't you call the method initGame() first?")
         
+        #종료조건 수정할 것
         elif (self.STATE[self.time] == self.goal[1]).all().all():
             return (-1, self.time) # 다 풀면 원래의 time란에 -1 대입하도록 했음
 
@@ -45,21 +47,21 @@ class Master:
                 if ans in self.goal[0]:
                     new_state[ans] = self.goal[1][ans]
                     # 공사중
-                    # def markClue(row):
-                    #     if row[ans] == 1:
-                    #         for char in [chr(i) for i in range(ord('a'), ord('z')+1)].remove(ans):
-                    #             row[char] = -1
-                    #     return row
-                    new_state = new_state.apply(markClue)
+                    def markClue(row):
+                        if row[ans] == 1:
+                            for char in [chr(i) for i in range(ord('a'), ord('z')+1)].remove(ans):
+                                row[char] = -1
+                        return row
+                    new_state = new_state.T.apply(markClue).T
                         
                 
                 else:
                     # 공사중
-                    # def markClue(row):
-                    #     if row['hash'] == 1:
-                    #         row[ans] = -1
-                    #     return row
-                    new_state = new_state.apply(markClue)
+                    def markClue(row):
+                        if row['hash'] == 1:
+                            row[ans] = -1
+                        return row
+                    new_state = new_state.T.apply(markClue).T
                 
                 self.STATE.append(new_state)
                 self.time += 1
