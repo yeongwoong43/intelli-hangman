@@ -15,6 +15,17 @@ class Master:
         self.MAX_LEN = MAX_LEN
         self.time = -1
 
+    def giveClue(self, i, char, ans=None, isCorrect=False):
+        if ans == None:
+            if self.goal[0][i] == char:
+                return 1
+            else:
+                return -1
+        elif isCorrect:
+        
+        else:
+            
+
     def word_to_df(self, word, test=False): # 단어를 state꼴로 바꾸는 method
         n = len(word)
 
@@ -23,8 +34,8 @@ class Master:
         df['hash'] = [1 for i in range(n)] + [0 for i in range(64-n)]
         if not test:
             for i in range(n):
-                df.loc[:n-1, 'a':'z'] = -1
-                df.loc[i, word[i]] = 1 # 이거 왜 작동 안함?
+                for char in [chr(x) for x in range(ord('a'), ord('z')+1)]:
+                    df.loc[i, char] = self.giveClue(i, char)
         
         return df
     
@@ -78,7 +89,7 @@ class Master:
     def initGame(self):
 
         # 답 생성
-        goal = self.selectWord()
-        self.goal = [goal, self.word_to_df(goal)]
-        self.STATE = [self.word_to_df(goal, test=True)]
+        self.goal = [self.selectWord()]
+        self.goal.append(self.word_to_df(self.goal[0]))
+        self.STATE = [self.word_to_df(self.goal[0], test=True)]
         self.time = 0
