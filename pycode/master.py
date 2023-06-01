@@ -2,94 +2,97 @@ import random
 import numpy as np
 import pandas as pd
 
-class Master:
+MAX_LEN = 64
 
-    def __init__(self, wordList=None, MAX_LEN=64):
-        if wordList == None:
-            self.wordList = '''ant bias cat dog elephant fish goat horse international jetcoaster kingmaker
-            legal mist niece occupation proporsal quit restriction solve telephone unfortune vector
-            worker xylophone you zero'''.split()
-        
-        else: self.wordList=wordList
-
-        self.MAX_LEN = MAX_LEN
-        self.time = -1
-
-    def giveClue(self, i, char, ans=None, isCorrect=False):
-        if ans == None:
-            if self.goal[0][i] == char:
-                return 1
-            else:
-                return -1
-        elif isCorrect:
-        
-        else:
-            
-
-    def word_to_df(self, word, test=False): # 단어를 state꼴로 바꾸는 method
-        n = len(word)
-
-        df = pd.DataFrame(np.zeros((self.MAX_LEN, 27)))
-        df.columns = ['hash']+[chr(i) for i in range(97, 123)]
-        df['hash'] = [1 for i in range(n)] + [0 for i in range(64-n)]
-        if not test:
-            for i in range(n):
-                for char in [chr(x) for x in range(ord('a'), ord('z')+1)]:
-                    df.loc[i, char] = self.giveClue(i, char)
-        
-        return df
-    
-
-    def selectWord(self): # 단어를 랜덤하게 선택
-        key = self.wordList[random.randint(1, len(self.wordList))]
-        return key
-
-
-    def stepNext(self, ans): # 답안하고 이전 state를 받아서 다음 state 리턴
-        if self.time == -1: raise Exception("Why don't you call the method initGame() first?")
-        
-        #종료조건 수정할 것
-        elif (self.STATE[self.time] == self.goal[1]).all().all():
-            return (-1, self.time) # 다 풀면 원래의 time란에 -1 대입하도록 했음
-
-        else:
-            if sum(self.STATE[self.time][ans]!=0) == 0: # 시도한 적 없는 글자라면
-                new_state = self.STATE[self.time].copy()
-                if ans in self.goal[0]:
-                    new_state[ans] = self.goal[1][ans]
-                    # 공사중
-                    def markClue(row):
-                        if row[ans] == 1:
-                            for char in [chr(i) for i in range(ord('a'), ord('z')+1)].remove(ans):
-                                row[char] = -1
-                        return row
-                    new_state = new_state.T.apply(markClue).T
-                        
-                
-                else:
-                    # 공사중
-                    def markClue(row):
-                        if row['hash'] == 1:
-                            row[ans] = -1
-                        return row
-                    new_state = new_state.T.apply(markClue).T
-                
-                self.STATE.append(new_state)
-                self.time += 1
-                    
-            
-            else: # 이미 한 번 했던 질문을 반복할 경우
-                raise Exception("ModelDesignError: Why try same letter again?")
-
-
-        return (self.time, self.STATE[self.time])
-
-    
-
-    def initGame(self):
-
-        # 답 생성
-        self.goal = [self.selectWord()]
-        self.goal.append(self.word_to_df(self.goal[0]))
-        self.STATE = [self.word_to_df(self.goal[0], test=True)]
+class State:
+    def __init__(self):
         self.time = 0
+        self.footprint = [[]]
+        self.clue = [{}]
+
+class Instructor:
+
+    def __init__(self, model, wordList=None, MAX_LEN = MAX_LEN):
+        if wordList==None:
+            self.setWordListDefault()
+        else:
+            self.setWordList(wordList)
+        
+        self.setModel(model)
+        
+        self.initGame()
+    
+    def setWordListDefault(self):
+        self.wordList = "ant bias cat dog elephant fish goat horse international jetcoaster kingmaker \
+                legal mist niece occupation proporsal quit restriction solve telephone unfortune vector \
+                    worker xylophone you zero".split()
+    
+    def setWordList(self, wordList):
+        self.wordList = wordList
+    
+    def setModel(self, model):
+        self.model = model
+    
+    def initGame(self):
+        self.initState()
+
+        self.setKeyWord()
+    
+    def initState(self):
+        self.State = State()
+    
+    def setKeyWord(self):
+        self.keyWord = random.choice(self.wordList)
+    
+
+
+    def getState(self):
+        time = self.State.time
+        return self.getStateAt(time)
+    
+    def getStateAt(self, time):
+        return (self.State.footprint[time], self.State.clue[time])
+
+    
+    
+    def stepNext(self, ans):
+        self.updateState(ans)
+
+        if self.isEnded():
+            self.closeGame()
+                
+    def isEnded(self):
+        for char in self.keyWord:
+            if char not in self.getState()[0]:
+                return False
+        return True
+    
+    def closeGame(self):
+        print("Game Ended")
+        pass
+
+    def updateState(self, ans):
+        self.State.time += 1
+        if ans in self.State.footprint[self.State.time-1]:
+            raise Exception("ModelDesignError: Why are you trying same letter again?")
+        else:
+            self.updateFootprint(ans)
+            self.updateClue(ans)
+        
+        return self.getStateAt(self.State.time)
+    
+    def updateFootprint(self, ans):
+        footprintPresent = self.getStateAt(self.State.time-1)[0].copy()
+        footprintPresent.append(ans)
+        self.State.footprint.append(footprintPresent)
+    
+    def updateClue(self, ans):
+        cluePresent = self.getStateAt(self.State.time-1)[1].copy()
+        cluePresent[ans] = self.getClue(ans)
+        self.State.clue.append(cluePresent)
+    
+    def getClue(self, ans):
+        if ans in list(self.keyWord):
+            return 1
+        else:
+            return 0
